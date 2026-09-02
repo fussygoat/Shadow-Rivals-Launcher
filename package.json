@@ -1,0 +1,40 @@
+{
+  "name": "shadow-rivals-launcher",
+  "version": "0.5.0",
+  "description": "Shadow Rivals Game Launcher with auto-update",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "dev": "electron ."
+  },
+  "author": "fussy goat",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "extract-zip": "^2.0.1",
+    "fs-extra": "^11.2.0"
+  },
+  "build": {
+    "appId": "com.shadowrivals.launcher",
+    "productName": "Shadow Rivals Launcher",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ]
+  }
+}

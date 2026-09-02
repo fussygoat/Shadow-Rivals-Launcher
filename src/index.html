@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>Shadow Rivals Launcher</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a12; color: #e0e0f0; overflow: hidden; height: 100vh; user-select: none; }
+
+    /* Title bar */
+    .titlebar { height: 32px; background: #080810; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; -webkit-app-region: drag; }
+    .titlebar-title { font-size: 11px; font-weight: 700; color: #00ffaa; letter-spacing: 1; }
+    .titlebar-btns { display: flex; gap: 2px; -webkit-app-region: no-drag; }
+    .titlebar-btns button { width: 36px; height: 28px; border: none; background: transparent; color: #666; font-size: 14px; cursor: pointer; }
+    .titlebar-btns button:hover { background: #1a1a2e; color: #e0e0f0; }
+    .titlebar-btns button.close:hover { background: #aa0000; color: white; }
+
+    .content { padding: 24px; height: calc(100vh - 32px); display: flex; flex-direction: column; }
+
+    /* Logo */
+    .logo-section { text-align: center; margin-bottom: 28px; }
+    .logo-text { font-size: 28px; font-weight: 900; letter-spacing: 3px; background: linear-gradient(135deg, #00ffaa, #6600ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .logo-sub { font-size: 11px; color: #555; letter-spacing: 2px; margin-top: 4px; }
+
+    /* Status */
+    .status-card { background: #111122; border: 1px solid #1a1a3a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .status-label { font-size: 12px; color: #666; }
+    .status-value { font-size: 12px; color: #e0e0f0; font-weight: 600; }
+    .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    .badge-ok { background: #00ffaa15; color: #00ffaa; }
+    .badge-update { background: #ffaa0015; color: #ffaa00; }
+    .badge-error { background: #ff444415; color: #ff4444; }
+
+    /* Progress */
+    .progress-container { margin: 12px 0; display: none; }
+    .progress-container.visible { display: block; }
+    .progress-bar-bg { height: 6px; background: #1a1a2e; border-radius: 3px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #00ffaa, #00cc88); border-radius: 3px; transition: width 0.3s; width: 0%; }
+    .progress-text { font-size: 11px; color: #666; margin-top: 6px; text-align: center; }
+
+    /* Buttons */
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 1; transition: opacity 0.2s; margin-bottom: 8px; }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.3; cursor: default; }
+    .btn-play { background: linear-gradient(135deg, #00ffaa, #00cc88); color: #000; }
+    .btn-update { background: linear-gradient(135deg, #ffaa00, #ff8800); color: #000; }
+    .btn-install { background: linear-gradient(135deg, #00ffaa, #00cc88); color: #000; }
+    .btn-secondary { background: #1a1a2e; color: #888; border: 1px solid #2a2a4a; }
+
+    /* Changelog */
+    .changelog { flex: 1; overflow-y: auto; margin-top: 12px; }
+    .changelog-title { font-size: 11px; color: #00ffaa; font-weight: 700; letter-spacing: 1; margin-bottom: 8px; }
+    .changelog-content { font-size: 12px; color: #6a6a8a; line-height: 1.6; }
+
+    /* News */
+    .news-item { background: #111122; border: 1px solid #1a1a3a; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .news-title { font-size: 12px; font-weight: 700; color: #e0e0f0; margin-bottom: 4px; }
+    .news-date { font-size: 10px; color: #555; }
+    .news-body { font-size: 11px; color: #6a6a8a; margin-top: 6px; line-height: 1.5; }
+
+    /* Loading */
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: #555; }
+    .spinner { width: 24px; height: 24px; border: 2px solid #2a2a4a; border-top-color: #00ffaa; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <span class="titlebar-title">SHADOW RIVALS</span>
+    <div class="titlebar-btns">
+      <button onclick="require('electron').ipcRenderer.send('window-minimize')">-&#8203;</button>
+      <button class="close" onclick="require('electron').ipcRenderer.send('window-close')">&#10005;</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="logo-section">
+      <div class="logo-text">SHADOW RIVALS</div>
+      <div class="logo-sub">GAME LAUNCHER</div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Local Version</span>
+        <span class="status-value" id="local-version">--</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Latest Version</span>
+        <span class="status-value" id="remote-version">Checking...</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Status</span>
+        <span class="status-badge badge-ok" id="status-badge">Checking</span>
+      </div>
+    </div>
+
+    <div class="progress-container" id="progress-container">
+      <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="progress-text" id="progress-text">Preparing...</div>
+    </div>
+
+    <button class="btn btn-play" id="btn-play" disabled onclick="launchGame()">PLAY</button>
+    <button class="btn btn-update" id="btn-update" style="display:none" onclick="installUpdate()">UPDATE NOW</button>
+    <button class="btn btn-install" id="btn-install" style="display:none" onclick="installUpdate()">INSTALL</button>
+    <button class="btn btn-secondary" onclick="require('electron').ipcRenderer.invoke('open-game-folder')">Open Game Folder</button>
+
+    <div class="changelog">
+      <div class="changelog-title">CHANGELOG</div>
+      <div class="changelog-content" id="changelog">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron')
+
+    let remoteData = null
+
+    async function init() {
+      const local = await ipcRenderer.invoke('get-version')
+      document.getElementById('local-version').textContent = local.version || 'Not installed'
+
+      const result = await ipcRenderer.invoke('check-update')
+      if (result.error) {
+        document.getElementById('remote-version').textContent = 'Offline'
+        document.getElementById('status-badge').textContent = 'Offline'
+        document.getElementById('status-badge').className = 'status-badge badge-error'
+        return
+      }
+
+      remoteData = result.remote
+      document.getElementById('remote-version').textContent = remoteData.version
+
+      if (result.needsUpdate) {
+        document.getElementById('status-badge').textContent = 'Update Available'
+        document.getElementById('status-badge').className = 'status-badge badge-update'
+        document.getElementById('btn-update').style.display = 'block'
+        document.getElementById('btn-play').disabled = false
+        document.getElementById('changelog').textContent = remoteData.changelog || 'No changelog available.'
+      } else {
+        document.getElementById('status-badge').textContent = 'Up to Date'
+        document.getElementById('status-badge').className = 'status-badge badge-ok'
+        document.getElementById('btn-play').disabled = false
+        document.getElementById('changelog').textContent = remoteData.changelog || 'No changelog available.'
+      }
+    }
+
+    async function installUpdate() {
+      if (!remoteData) return
+      const btn = document.getElementById('btn-update') || document.getElementById('btn-install')
+      btn.disabled = true
+      btn.textContent = 'INSTALLING...'
+
+      const progressContainer = document.getElementById('progress-container')
+      const progressBar = document.getElementById('progress-bar')
+      const progressText = document.getElementById('progress-text')
+      progressContainer.classList.add('visible')
+
+      ipcRenderer.on('install-progress', (e, data) => {
+        if (data.stage === 'downloading') {
+          progressBar.style.width = data.percent + '%'
+          progressText.textContent = `Downloading... ${data.percent}%`
+        } else if (data.stage === 'extracting') {
+          progressBar.style.width = '100%'
+          progressText.textContent = 'Extracting files...'
+        } else if (data.stage === 'done') {
+          progressText.textContent = 'Update complete!'
+          setTimeout(() => init(), 500)
+        }
+      })
+
+      const result = await ipcRenderer.invoke('install-update', remoteData)
+      if (result.error) {
+        progressText.textContent = 'Error: ' + result.error
+        btn.disabled = false
+        btn.textContent = 'RETRY'
+      }
+    }
+
+    function launchGame() {
+      ipcRenderer.invoke('launch-game').then(r => {
+        if (r.error) alert(r.error)
+      })
+    }
+
+    init()
+  </script>
+</body>
+</html>
