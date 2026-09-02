@@ -117,38 +117,60 @@
     const { ipcRenderer } = require('electron')
 
     let remoteData = null
+    let gameInstalled = false
 
     async function init() {
       const local = await ipcRenderer.invoke('get-version')
-      document.getElementById('local-version').textContent = local.version || 'Not installed'
+      const installed = await ipcRenderer.invoke('check-game-installed')
+      gameInstalled = installed
+
+      document.getElementById('local-version').textContent = local.version !== '0.0.0' ? local.version : 'Not installed'
 
       const result = await ipcRenderer.invoke('check-update')
       if (result.error) {
         document.getElementById('remote-version').textContent = 'Offline'
         document.getElementById('status-badge').textContent = 'Offline'
         document.getElementById('status-badge').className = 'status-badge badge-error'
+        document.getElementById('btn-play').textContent = gameInstalled ? 'PLAY' : 'PLAY (No Game)'
+        document.getElementById('btn-play').disabled = !gameInstalled
         return
       }
 
       remoteData = result.remote
       document.getElementById('remote-version').textContent = remoteData.version
 
-      if (result.needsUpdate) {
+      if (!gameInstalled) {
+        document.getElementById('status-badge').textContent = 'Not Installed'
+        document.getElementById('status-badge').className = 'status-badge badge-update'
+        document.getElementById('btn-play').style.display = 'none'
+        if (remoteData.downloadUrl) {
+          document.getElementById('btn-install').style.display = 'block'
+          document.getElementById('btn-install').disabled = false
+          document.getElementById('btn-install').textContent = 'INSTALL GAME'
+          document.getElementById('btn-update').style.display = 'none'
+        } else {
+          document.getElementById('btn-install').style.display = 'block'
+          document.getElementById('btn-install').disabled = true
+          document.getElementById('btn-install').textContent = 'GAME NOT AVAILABLE YET'
+          document.getElementById('btn-update').style.display = 'none'
+        }
+      } else if (result.needsUpdate) {
         document.getElementById('status-badge').textContent = 'Update Available'
         document.getElementById('status-badge').className = 'status-badge badge-update'
         document.getElementById('btn-update').style.display = 'block'
         document.getElementById('btn-play').disabled = false
-        document.getElementById('changelog').textContent = remoteData.changelog || 'No changelog available.'
+        document.getElementById('btn-play').textContent = 'PLAY'
       } else {
         document.getElementById('status-badge').textContent = 'Up to Date'
         document.getElementById('status-badge').className = 'status-badge badge-ok'
         document.getElementById('btn-play').disabled = false
-        document.getElementById('changelog').textContent = remoteData.changelog || 'No changelog available.'
+        document.getElementById('btn-play').textContent = 'PLAY'
       }
+      document.getElementById('changelog').textContent = remoteData.changelog || 'No changelog available.'
     }
 
     async function installUpdate() {
-      if (!remoteData) return
+      if (!remoteData || !remoteData.downloadUrl) return
       const btn = document.getElementById('btn-update') || document.getElementById('btn-install')
       btn.disabled = true
       btn.textContent = 'INSTALLING...'

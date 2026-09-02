@@ -89,6 +89,27 @@ app.on('window-all-closed', () => app.quit())
 // IPC handlers
 ipcMain.handle('get-version', () => getLocalVersion())
 
+ipcMain.handle('check-game-installed', () => {
+  if (!fs.existsSync(GAME_DIR) || !fs.existsSync(INSTALL_MARKER)) return false
+  const findExe = (dir) => {
+    try {
+      const files = fs.readdirSync(dir)
+      for (const f of files) {
+        const fp = path.join(dir, f)
+        const stat = fs.statSync(fp)
+        if (stat.isDirectory()) {
+          const found = findExe(fp)
+          if (found) return found
+        } else if (f.toLowerCase().endsWith('.exe') && !f.toLowerCase().includes('uninstall') && !f.toLowerCase().includes('launcher')) {
+          return fp
+        }
+      }
+    } catch (e) {}
+    return null
+  }
+  return findExe(GAME_DIR) !== null
+})
+
 ipcMain.handle('check-update', async () => {
   try {
     const raw = await fetchRemote(VERSION_URL)
@@ -124,6 +145,22 @@ ipcMain.handle('install-update', async (e, remote) => {
     // Cleanup zip
     try { fs.unlinkSync(zipPath) } catch (e) {}
 
+    // Remove any launcher .exe that got extracted (it's the game, not us)
+    const cleanLauncherExes = (dir) => {
+      try {
+        const files = fs.readdirSync(dir)
+        for (const f of files) {
+          const fp = path.join(dir, f)
+          const stat = fs.statSync(fp)
+          if (stat.isDirectory()) cleanLauncherExes(fp)
+          else if (f.toLowerCase().includes('launcher') && f.toLowerCase().endsWith('.exe')) {
+            try { fs.unlinkSync(fp) } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+    cleanLauncherExes(GAME_DIR)
+
     // Save version
     saveLocalVersion(remote)
     fs.writeFileSync(INSTALL_MARKER, remote.version)
@@ -136,26 +173,27 @@ ipcMain.handle('install-update', async (e, remote) => {
 })
 
 ipcMain.handle('launch-game', () => {
-  // Look for the game exe in the install directory
-  if (!fs.existsSync(GAME_DIR)) return { error: 'Game not installed' }
+  if (!fs.existsSync(GAME_DIR) || !fs.existsSync(INSTALL_MARKER)) return { error: 'Game not installed' }
 
   const findExe = (dir) => {
-    const files = fs.readdirSync(dir)
-    for (const f of files) {
-      const fp = path.join(dir, f)
-      const stat = fs.statSync(fp)
-      if (stat.isDirectory()) {
-        const found = findExe(fp)
-        if (found) return found
-      } else if (f.toLowerCase().endsWith('.exe') && !f.toLowerCase().includes('uninstall')) {
-        return fp
+    try {
+      const files = fs.readdirSync(dir)
+      for (const f of files) {
+        const fp = path.join(dir, f)
+        const stat = fs.statSync(fp)
+        if (stat.isDirectory()) {
+          const found = findExe(fp)
+          if (found) return found
+        } else if (f.toLowerCase().endsWith('.exe') && !f.toLowerCase().includes('uninstall') && !f.toLowerCase().includes('launcher')) {
+          return fp
+        }
       }
-    }
+    } catch (e) {}
     return null
   }
 
   const exe = findExe(GAME_DIR)
-  if (!exe) return { error: 'Game exe not found' }
+  if (!exe) return { error: 'Game exe not found in install folder' }
 
   execFile(exe, (err) => {
     if (err) console.error('Launch error:', err)
