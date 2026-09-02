@@ -1,6 +1,6 @@
 {
   "name": "shadow-rivals-launcher",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Shadow Rivals Game Launcher with auto-update",
   "main": "main.js",
   "scripts": {
